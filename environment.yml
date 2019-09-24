@@ -1,0 +1,4 @@
+name: deep-reinforcement-learning
+dependencies:
+  - python=3.6
+  - pip=19.2.2
