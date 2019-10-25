@@ -6,6 +6,7 @@ from model import QNetwork
 
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
@@ -36,6 +37,8 @@ class Agent():
         # Q-Network
         self.qnetwork_local = QNetwork(state_size, action_size, seed).to(device)
         self.qnetwork_target = QNetwork(state_size, action_size, seed).to(device)
+        self.qnetwork_target.eval()
+        self.loss = nn.MSELoss()
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
 
         # Replay memory
@@ -85,8 +88,21 @@ class Agent():
         """
         states, actions, rewards, next_states, dones = experiences
 
-        ## TODO: compute and minimize the loss
-        "*** YOUR CODE HERE ***"
+        # Calculate max_a(Q) for all samples using the target network
+        with torch.no_grad():
+            maxQ, _ = self.qnetwork_target(next_states).max(dim=1)
+        maxQ = maxQ.unsqueeze(-1)
+        
+        # Calculate target values
+        targets = rewards + gamma * (1 - dones) * maxQ
+
+        # Optimize
+        all_action_values = self.qnetwork_local(states)
+        values = all_action_values.gather(1, actions)
+        loss = self.loss(values, targets)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
         # ------------------- update target network ------------------- #
         self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)                     
